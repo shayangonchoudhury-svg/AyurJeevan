@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AyurJeevan</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#000">
+
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#000;
+  --text:#fff;
+  --muted:#9ca3af;
+}
+*{box-sizing:border-box;font-family:Inter}
+
+body{
+  margin:0;
+  background:
+    radial-gradient(800px 500px at 20% -10%,rgba(255,255,255,.08),transparent 60%),
+    #000;
+  color:var(--text);
+}
+
+/* HERO */
+#hero{
+  min-height:100vh;
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.hero-top{max-width:420px;margin:auto}
+.small{letter-spacing:4px;font-size:12px;color:#666}
+.title{font-size:52px;font-weight:900;line-height:1.05;margin:14px 0}
+.title span{color:#ffffff30}
+.subtitle{color:#9ca3af;line-height:1.7;max-width:300px}
+
+/* Hero Tab */
+.hero-tab{
+  background:#111;
+  border-radius:30px 30px 0 0;
+  padding:18px;
+  text-align:center;
+  cursor:pointer;
+}
+.hero-tab span{font-size:12px;letter-spacing:3px;color:#aaa}
+.hero-tab strong{display:block;margin-top:6px}
+
+/* APP */
+#app{display:none;padding:16px}
+.app{max-width:420px;margin:auto}
+
+/* Header */
+.app-header{display:flex;align-items:center;margin-bottom:10px}
+.back{
+  background:#111;
+  color:#aaa;
+  padding:10px 14px;
+  border-radius:999px;
+  cursor:pointer;
+}
+
+/* Inputs */
+.label{letter-spacing:3px;font-size:12px;color:#777;margin-top:20px}
+input,select{
+  width:100%;
+  padding:14px;
+  border-radius:999px;
+  border:2px solid white;
+  background:transparent;
+  color:white;
+  margin-top:8px;
+}
+
+/* Buttons */
+button{
+  padding:12px 14px;
+  border-radius:999px;
+  border:none;
+  font-weight:700;
+  letter-spacing:2px;
+}
+.primary{background:white;color:black}
+.ghost{background:#111;color:#aaa}
+
+/* Cards */
+.card{
+  background:#111;
+  border-radius:20px;
+  padding:14px;
+  margin-top:12px;
+}
+
+/* Tabs */
+.tabs{display:flex;gap:10px;margin:25px 0 10px}
+.tab{flex:1}
+
+/* Calendar */
+.calendar-grid{
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  gap:8px;
+}
+.day{
+  background:#111;
+  border-radius:14px;
+  padding:10px;
+  font-size:12px;
+  min-height:70px;
+  opacity:0;
+}
+.day.show{animation:dayPop .25s ease-out forwards}
+.today{outline:2px solid white;animation:todayPulse 2s infinite}
+.day small{display:block;color:#9ca3af;margin-top:6px}
+
+@keyframes dayPop{
+  from{transform:scale(.96);opacity:0}
+  to{transform:scale(1);opacity:1}
+}
+@keyframes todayPulse{
+  0%{box-shadow:0 0 0 0 rgba(255,255,255,.3)}
+  70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}
+}
+
+/* Due badge */
+.due-badge{
+  display:inline-block;
+  margin-left:6px;
+  padding:2px 6px;
+  font-size:10px;
+  border-radius:999px;
+  background:white;
+  color:black;
+  animation:duePulse 1.6s infinite;
+}
+@keyframes duePulse{
+  0%{transform:scale(1)}
+  50%{transform:scale(1.1)}
+  100%{transform:scale(1)}
+}
+
+/* Taken animation */
+.checkmark{
+  width:18px;height:18px;border-radius:50%;
+  border:2px solid black;
+  position:relative;
+  display:inline-block;
+  animation:popCheck .3s forwards;
+}
+.checkmark:after{
+  content:'';
+  position:absolute;
+  left:4px;top:1px;
+  width:5px;height:9px;
+  border-right:2px solid black;
+  border-bottom:2px solid black;
+  transform:rotate(45deg);
+}
+@keyframes popCheck{to{transform:scale(1)}}
+
+/* Confetti */
+.confetti{
+  position:fixed;
+  top:-10px;
+  width:6px;height:6px;
+  background:white;
+  opacity:.8;
+  animation:fall 1.2s forwards;
+}
+@keyframes fall{
+  to{transform:translateY(120vh) rotate(180deg);opacity:0}
+}
+
+/* Footer */
+.footer{
+  margin-top:30px;
+  background:white;
+  color:black;
+  padding:20px;
+  border-radius:30px;
+  text-align:center;
+}
+.footer button{background:black;color:white;width:100%}
+</style>
+</head>
+
+<body>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-top">
+    <div class="small">MEDICATION / REMINDER</div>
+    <div class="title">NEVER MISS<br><span>A DOSE?</span></div>
+    <div class="subtitle">A calm, reliable way to manage medicines for you and your family.</div>
+  </div>
+  <div class="hero-tab" onclick="openApp()">
+    <span>OPEN</span>
+    <strong>AYURJEEVAN</strong>
+  </div>
+</section>
+
+<!-- APP -->
+<section id="app">
+  <div class="app">
+
+    <div class="app-header">
+      <div class="back" onclick="goBack()">← Back</div>
+    </div>
+
+    <div class="label">PROFILE</div>
+    <select id="profile"></select>
+    <input id="newProfile" placeholder="Add family member">
+
+    <div class="label">MEDICINE NAME</div>
+    <input id="med">
+
+    <div class="label">DOSE QUANTITY</div>
+    <input id="dose">
+
+    <div class="label">TIME</div>
+    <input type="time" id="time">
+
+    <div class="label">FREQUENCY</div>
+    <select id="freq">
+      <option value="daily">Daily</option>
+      <option value="1">Once a week</option>
+      <option value="2">Twice a week</option>
+      <option value="3">Thrice a week</option>
+    </select>
+
+    <button class="primary" style="width:100%;margin-top:16px" onclick="addReminder()">ADD REMINDER</button>
+
+    <div class="card">🔥 Streak: <span id="streak">0</span> days</div>
+
+    <div class="tabs">
+      <button id="tabMeds" class="tab primary" onclick="showList()">MEDS</button>
+      <button id="tabCal" class="tab ghost" onclick="showCalendar()">CALENDAR</button>
+    </div>
+
+    <div id="list"></div>
+
+    <div id="calendar" style="display:none">
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <button id="weekBtn" class="primary" onclick="setView('week')">WEEK</button>
+        <button id="monthBtn" class="ghost" onclick="setView('month')">MONTH</button>
+      </div>
+    </div>
+
+    <div class="footer">
+      <strong>Emergency?</strong>
+      <button onclick="callEmergency()">CALL CONTACT</button>
+    </div>
+
+  </div>
+</section>
+
+<script>
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}
+Notification.requestPermission();
+
+let data = JSON.parse(localStorage.getItem('AyurJeevan')) || {
+  profiles:["Me"],
+  reminders:[],
+  streak:0,
+  lastTaken:null,
+  emergency:"112"
+};
+
+let viewMode='week', weekOffset=0;
+
+const hero=document.getElementById('hero');
+const app=document.getElementById('app');
+const profileSel=document.getElementById('profile');
+
+function openApp(){hero.style.display='none';app.style.display='block'}
+function goBack(){app.style.display='none';hero.style.display='flex'}
+
+function save(){localStorage.setItem('AyurJeevan',JSON.stringify(data))}
+
+function loadProfiles(){
+  profileSel.innerHTML='';
+  data.profiles.forEach(p=>{
+    let o=document.createElement('option');
+    o.text=p;o.value=p;
+    profileSel.appendChild(o);
+  });
+}
+
+newProfile.onchange=()=>{
+  if(!newProfile.value.trim())return;
+  data.profiles.push(newProfile.value.trim());
+  newProfile.value='';
+  save();loadProfiles();
+};
+
+function generateDays(freq){
+  if(freq==="daily")return[0,1,2,3,4,5,6];
+  let days=[new Date().getDay()];
+  while(days.length<Number(freq)){
+    let d=Math.floor(Math.random()*7);
+    if(!days.includes(d))days.push(d);
+  }
+  return days;
+}
+
+function addReminder(){
+  if(!med.value||!time.value)return;
+  data.reminders.push({
+    profile:profileSel.value,
+    med:med.value,
+    dose:dose.value||'-',
+    time:time.value,
+    days:generateDays(freq.value),
+    takenToday:false
+  });
+  save();render();
+}
+
+function launchConfetti(){
+  for(let i=0;i<20;i++){
+    let c=document.createElement('div');
+    c.className='confetti';
+    c.style.left=Math.random()*100+'vw';
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(),1500);
+  }
+}
+
+function take(i){
+  const today=new Date().toDateString();
+  if(data.lastTaken!==today){
+    data.streak++;
+    data.lastTaken=today;
+    if([3,7,14,30].includes(data.streak))launchConfetti();
+  }
+  data.reminders[i].takenToday=true;
+  save();render();
+}
+
+function del(i){data.reminders.splice(i,1);save();render()}
+
+function render(){
+  list.innerHTML='';
+  const today=new Date().getDay();
+  data.reminders.forEach((r,i)=>{
+    const due=r.days.includes(today);
+    const c=document.createElement('div');
+    c.className='card';
+    c.innerHTML=`
+      <b>${r.med}</b> (${r.dose})<br>
+      ${r.profile} • ${r.time}<br>
+      <small>${due?'📅 Due today <span class="due-badge">DUE</span>':'⏭ Not today'}</small>
+      <div style="margin-top:10px;display:flex;gap:10px">
+        ${due&&!r.takenToday?`<button class="primary" onclick="take(${i})">TAKEN</button>`:
+          r.takenToday?`<span class="checkmark"></span>`:''}
+        <button class="ghost" onclick="del(${i})">DELETE</button>
+      </div>`;
+    list.appendChild(c);
+  });
+  streak.innerText=data.streak;
+}
+
+function showCalendar(){
+  tabMeds.className='tab ghost';
+  tabCal.className='tab primary';
+  list.style.display='none';
+  calendar.style.display='block';
+  renderCalendar();
+}
+
+function showList(){
+  tabCal.className='tab ghost';
+  tabMeds.className='tab primary';
+  calendar.style.display='none';
+  list.style.display='block';
+}
+
+function setView(v){
+  viewMode=v;
+  weekBtn.className=v==='week'?'primary':'ghost';
+  monthBtn.className=v==='month'?'primary':'ghost';
+  renderCalendar();
+}
+
+function renderCalendar(){
+  calendar.innerHTML=calendar.innerHTML.split('</div>')[0]+'</div>';
+  if(viewMode==='week')renderWeek();
+  else renderMonth();
+}
+
+function renderWeek(){
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const base=new Date();
+  base.setDate(base.getDate()+weekOffset*7);
+  const start=new Date(base);
+  start.setDate(start.getDate()-start.getDay());
+
+  const grid=document.createElement('div');
+  grid.className='calendar-grid';
+
+  for(let i=0;i<7;i++){
+    const d=new Date(start);
+    d.setDate(start.getDate()+i);
+    const cell=document.createElement('div');
+    cell.className='day'+(d.toDateString()===new Date().toDateString()?' today':'');
+    cell.innerHTML=`<strong>${days[d.getDay()]}</strong>`;
+    data.reminders.filter(r=>r.days.includes(d.getDay()))
+      .forEach(m=>{
+        let s=document.createElement('small');
+        s.innerText=m.med;
+        cell.appendChild(s);
+      });
+    grid.appendChild(cell);
+    setTimeout(()=>cell.classList.add('show'),i*60);
+  }
+  calendar.appendChild(grid);
+}
+
+function renderMonth(){
+  const now=new Date();
+  const year=now.getFullYear(),month=now.getMonth();
+  const first=new Date(year,month,1);
+  const last=new Date(year,month+1,0);
+
+  const grid=document.createElement('div');
+  grid.className='calendar-grid';
+
+  for(let i=0;i<first.getDay();i++)grid.appendChild(document.createElement('div'));
+
+  for(let d=1;d<=last.getDate();d++){
+    const date=new Date(year,month,d);
+    const cell=document.createElement('div');
+    cell.className='day'+(date.toDateString()===new Date().toDateString()?' today':'');
+    cell.innerHTML=`<strong>${d}</strong>`;
+    data.reminders.filter(r=>r.days.includes(date.getDay()))
+      .forEach(m=>{
+        let s=document.createElement('small');
+        s.innerText=m.med;
+        cell.appendChild(s);
+      });
+    grid.appendChild(cell);
+    setTimeout(()=>cell.classList.add('show'),d*20);
+  }
+  calendar.appendChild(grid);
+}
+
+function callEmergency(){location.href='tel:'+data.emergency}
+
+loadProfiles();render();
+</script>
+</body>
+</html>
