@@ -163,6 +163,21 @@ button{
 }
 @keyframes popCheck{to{transform:scale(1)}}
 
+#daySelector label {
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:14px;
+}
+
+#daySelector.disabled {
+  opacity:0.5;
+}
+
+.day-grid.disabled {
+  pointer-events:none;
+}
+
 /* Confetti */
 .confetti{
   position:fixed;
@@ -225,13 +240,23 @@ button{
     <div class="label">TIME</div>
     <input type="time" id="time">
 
-    <div class="label">FREQUENCY</div>
-    <select id="freq">
-      <option value="daily">Daily</option>
-      <option value="1">Once a week</option>
-      <option value="2">Twice a week</option>
-      <option value="3">Thrice a week</option>
-    </select>
+    <div class="label">DAY TYPE</div>
+
+<div class="card" id="daySelector">
+  <label>
+    <input type="checkbox" id="dailyChk" checked> Daily
+  </label>
+
+  <div class="day-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px">    <label><input type="checkbox" class="dayChk" value="1"> Mon</label>
+    <label><input type="checkbox" class="dayChk" value="2"> Tue</label>
+    <label><input type="checkbox" class="dayChk" value="3"> Wed</label>
+    <label><input type="checkbox" class="dayChk" value="4"> Thu</label>
+    <label><input type="checkbox" class="dayChk" value="5"> Fri</label>
+    <label><input type="checkbox" class="dayChk" value="6"> Sat</label>
+    <label><input type="checkbox" class="dayChk" value="0"> Sun</label>
+  </div>
+</div>
+
 
     <button class="primary" style="width:100%;margin-top:16px" onclick="addReminder()">ADD REMINDER</button>
 
@@ -254,6 +279,36 @@ button{
     <div class="footer">
       <strong>Emergency?</strong>
       <button onclick="callEmergency()">CALL CONTACT</button>
+    </div>
+
+  </div>
+</section>
+<!-- MEDICINE DETAIL PAGE -->
+<section id="medicinePage" style="display:none;padding:16px">
+  <div class="app">
+
+    <div class="app-header">
+      <div class="back" onclick="closeMedicine()">← Back</div>
+    </div>
+
+    <div class="card">
+      <h3 id="md-name"></h3>
+      <div class="subtitle" id="md-dose"></div>
+      <div class="subtitle" id="md-profile"></div>
+    </div>
+
+    <div class="card">
+      <strong>Schedule</strong>
+      <div style="margin-top:8px">🕒 <span id="md-time"></span></div>
+      <div style="margin-top:6px">📅 <span id="md-days"></span></div>
+    </div>
+
+    <div class="card" id="md-status"></div>
+
+    <div class="card" style="display:flex;flex-direction:column;gap:10px">
+      <button class="primary" id="mdTakeBtn" onclick="takeFromDetail()">TAKEN</button>
+      <button class="ghost" onclick="completeMedicine()">COMPLETE MEDICINE</button>
+      <button class="ghost" onclick="deleteFromDetail()">DELETE</button>
     </div>
 
   </div>
@@ -309,17 +364,52 @@ function generateDays(freq){
 }
 
 function addReminder(){
-  if(!med.value||!time.value)return;
+  if(!med.value || !time.value) return;
+
+  const selectedDays = getSelectedDays();
+  if (!selectedDays) return; // ❗ stop if no day selected
+
   data.reminders.push({
-    profile:profileSel.value,
-    med:med.value,
-    dose:dose.value||'-',
-    time:time.value,
-    days:generateDays(freq.value),
-    takenToday:false
+    profile: profileSel.value,
+    med: med.value,
+    dose: dose.value || '-',
+    time: time.value,
+    days: selectedDays,
+    takenToday: false
   });
-  save();render();
+
+  save();
+  render();
+
+  // clear inputs
+  med.value = '';
+  dose.value = '';
+  time.value = '';
+  dailyChk.checked = true;
+  dayChks.forEach(c => c.checked = false);
 }
+
+
+
+function getSelectedDays(){
+  if (dailyChk.checked) return [0,1,2,3,4,5,6];
+
+  const dayChks = document.querySelectorAll('.dayChk');
+  let days = [];
+
+  dayChks.forEach(c => {
+    if (c.checked) days.push(Number(c.value));
+  });
+
+  if (days.length === 0) {
+    alert('Please select at least one day or choose Daily.');
+    return null;
+  }
+
+  return days;
+}
+
+
 
 function launchConfetti(){
   for(let i=0;i<20;i++){
@@ -344,20 +434,51 @@ function take(i){
 
 function del(i){data.reminders.splice(i,1);save();render()}
 
+function getTodaySortedReminders(){
+  const today = new Date().getDay();
+
+  return data.reminders
+    .map((r, index) => ({ ...r, index })) // keep original index
+    .filter(r =>
+      !r.completed && r.days.includes(today)
+    )
+    .sort((a, b) => {
+      // 1️⃣ Untaken medicines first
+      if (a.takenToday !== b.takenToday) {
+        return a.takenToday - b.takenToday;
+      }
+
+      // 2️⃣ Earlier time first
+      return a.time.localeCompare(b.time);
+    });
+}
+
 function render(){
   list.innerHTML='';
   const today=new Date().getDay();
-  data.reminders.forEach((r,i)=>{
+  const sorted = getTodaySortedReminders();
+
+sorted.forEach(r=>{
+  const i = r.index;
+  if(r.completed) return; // 🔒 hide completed medicines
     const due=r.days.includes(today);
     const c=document.createElement('div');
+c.onclick = () => openMedicine(i);
     c.className='card';
     c.innerHTML=`
       <b>${r.med}</b> (${r.dose})<br>
       ${r.profile} • ${r.time}<br>
       <small>${due?'📅 Due today <span class="due-badge">DUE</span>':'⏭ Not today'}</small>
       <div style="margin-top:10px;display:flex;gap:10px">
-        ${due&&!r.takenToday?`<button class="primary" onclick="take(${i})">TAKEN</button>`:
-          r.takenToday?`<span class="checkmark"></span>`:''}
+        ${r.completed
+  ? `<small>✓ Completed</small>`
+  : due && !r.takenToday
+    ? `<button class="primary" onclick="take(${i})">TAKEN</button>`
+    : r.takenToday
+      ? `<span class="checkmark"></span>`
+      : ''
+}
+
         <button class="ghost" onclick="del(${i})">DELETE</button>
       </div>`;
     list.appendChild(c);
@@ -421,6 +542,55 @@ function renderWeek(){
   calendar.appendChild(grid);
 }
 
+function renderMedicinePage(){
+  const m = data.reminders[selectedMedicineIndex];
+
+  document.getElementById('md-name').innerText = m.med;
+  document.getElementById('md-dose').innerText = `Dose: ${m.dose}`;
+  document.getElementById('md-profile').innerText = `For: ${m.profile}`;
+  document.getElementById('md-time').innerText = m.time;
+
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  document.getElementById('md-days').innerText =
+    m.days.length === 7
+      ? 'Daily'
+      : m.days.map(d => dayNames[d]).join(', ');
+
+ const takeBtn = document.getElementById('mdTakeBtn');
+
+if(m.completed){
+  document.getElementById('md-status').innerHTML = '✓ Medicine course completed';
+  takeBtn.style.display = 'none';
+}
+else if(m.takenToday){
+  document.getElementById('md-status').innerHTML = '✓ Taken today';
+  takeBtn.style.display = 'none';
+}
+else{
+  document.getElementById('md-status').innerHTML = '⏳ Not taken today';
+  takeBtn.style.display = 'block';
+}
+}
+
+function takeFromDetail(){
+  take(selectedMedicineIndex);
+  renderMedicinePage();
+}
+
+function completeMedicine(){
+  data.reminders[selectedMedicineIndex].completed = true;
+  save();
+  renderMedicinePage();
+}
+
+function deleteFromDetail(){
+  if(!confirm('Delete this medicine?')) return;
+  data.reminders.splice(selectedMedicineIndex, 1);
+  save();
+  closeMedicine();
+  render();
+}
+
 function renderMonth(){
   const now=new Date();
   const year=now.getFullYear(),month=now.getMonth();
@@ -449,9 +619,39 @@ function renderMonth(){
   calendar.appendChild(grid);
 }
 
+const daySelector = document.getElementById('daySelector');
+
+function updateDayUI(){
+  if(dailyChk.checked){
+    daySelector.classList.add('disabled');
+  } else {
+    daySelector.classList.remove('disabled');
+  }
+}
+
+// run once on load
+updateDayUI();
+
+// listen for change
+dailyChk.addEventListener('change', updateDayUI);
+
 function callEmergency(){location.href='tel:'+data.emergency}
 
 loadProfiles();render();
+let selectedMedicineIndex = null;
+
+function openMedicine(i){
+  selectedMedicineIndex = i;
+  app.style.display = 'none';
+  document.getElementById('medicinePage').style.display = 'block';
+  renderMedicinePage();
+}
+
+function closeMedicine(){
+  document.getElementById('medicinePage').style.display = 'none';
+  app.style.display = 'block';
+}
+
 </script>
 </body>
 </html>
