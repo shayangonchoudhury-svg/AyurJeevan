@@ -323,6 +323,7 @@ let data = JSON.parse(localStorage.getItem('AyurJeevan')) || {
   reminders:[],
   streak:0,
   lastTaken:null,
+  lastOpenDate: null,
   emergency:"112"
 };
 
@@ -331,11 +332,29 @@ let viewMode='week', weekOffset=0;
 const hero=document.getElementById('hero');
 const app=document.getElementById('app');
 const profileSel=document.getElementById('profile');
+const list = document.getElementById('list');
+const calendar = document.getElementById('calendar');
+const tabMeds = document.getElementById('tabMeds');
+const tabCal = document.getElementById('tabCal');
 
 function openApp(){hero.style.display='none';app.style.display='block'}
 function goBack(){app.style.display='none';hero.style.display='flex'}
 
 function save(){localStorage.setItem('AyurJeevan',JSON.stringify(data))}
+
+function resetForNewDay(){
+  const today = new Date().toDateString();
+
+  if(data.lastOpenDate !== today){
+    // New day detected
+    data.reminders.forEach(r => {
+      r.takenToday = false;
+    });
+
+    data.lastOpenDate = today;
+    save();
+  }
+}
 
 function loadProfiles(){
   profileSel.innerHTML='';
@@ -345,6 +364,9 @@ function loadProfiles(){
     profileSel.appendChild(o);
   });
 }
+
+const dailyChk = document.getElementById('dailyChk');
+const dayChks = document.querySelectorAll('.dayChk');
 
 newProfile.onchange=()=>{
   if(!newProfile.value.trim())return;
@@ -370,13 +392,16 @@ function addReminder(){
   if (!selectedDays) return; // ❗ stop if no day selected
 
   data.reminders.push({
-    profile: profileSel.value,
-    med: med.value,
-    dose: dose.value || '-',
-    time: time.value,
-    days: selectedDays,
-    takenToday: false
-  });
+  id: Date.now(),          // ⭐ REQUIRED
+  profile: profileSel.value,
+  med: med.value,
+  dose: dose.value || '-',
+  time: time.value,
+  days: selectedDays,
+  takenToday: false,
+  completed:false
+});
+
 
   save();
   render();
@@ -421,69 +446,96 @@ function launchConfetti(){
   }
 }
 
-function take(i){
-  const today=new Date().toDateString();
-  if(data.lastTaken!==today){
+function take(index){
+  const today = new Date().toDateString();
+
+  if(data.lastTaken !== today){
     data.streak++;
-    data.lastTaken=today;
-    if([3,7,14,30].includes(data.streak))launchConfetti();
+    data.lastTaken = today;
   }
-  data.reminders[i].takenToday=true;
-  save();render();
+
+  data.reminders[index].takenToday = true;
+  save();
+  render();
 }
 
-function del(i){data.reminders.splice(i,1);save();render()}
+
+function del(index){
+  data.reminders.splice(index, 1);
+  save();
+  render();
+}
+
 
 function getTodaySortedReminders(){
   const today = new Date().getDay();
 
   return data.reminders
-    .map((r, index) => ({ ...r, index })) // keep original index
-    .filter(r =>
-      !r.completed && r.days.includes(today)
-    )
+    .map((r, index) => ({ r, index }))
+    .filter(x => !x.r.completed && x.r.days.includes(today))
     .sort((a, b) => {
-      // 1️⃣ Untaken medicines first
-      if (a.takenToday !== b.takenToday) {
-        return a.takenToday - b.takenToday;
+      if (a.r.takenToday !== b.r.takenToday) {
+        return a.r.takenToday - b.r.takenToday;
       }
-
-      // 2️⃣ Earlier time first
-      return a.time.localeCompare(b.time);
+      return a.r.time.localeCompare(b.r.time);
     });
 }
 
+
 function render(){
+  ensureToday();        // ⭐ THIS LINE FIXES ERROR 5
   list.innerHTML='';
   const today=new Date().getDay();
   const sorted = getTodaySortedReminders();
 
-sorted.forEach(r=>{
-  const i = r.index;
-  if(r.completed) return; // 🔒 hide completed medicines
-    const due=r.days.includes(today);
-    const c=document.createElement('div');
-c.onclick = () => openMedicine(i);
-    c.className='card';
-    c.innerHTML=`
-      <b>${r.med}</b> (${r.dose})<br>
-      ${r.profile} • ${r.time}<br>
-      <small>${due?'📅 Due today <span class="due-badge">DUE</span>':'⏭ Not today'}</small>
-      <div style="margin-top:10px;display:flex;gap:10px">
-        ${r.completed
-  ? `<small>✓ Completed</small>`
-  : due && !r.takenToday
-    ? `<button class="primary" onclick="take(${i})">TAKEN</button>`
-    : r.takenToday
-      ? `<span class="checkmark"></span>`
-      : ''
+sorted.forEach(({ r, index }) => {
+  const id = r.id;
+  const due = r.days.includes(today);
+
+  const c = document.createElement('div');
+  c.className = 'card';
+
+  c.onclick = () => openMedicine(id);
+
+  c.innerHTML = `
+    <b style="cursor:pointer;text-decoration:underline"
+   onclick="openMedicine('${id}')">
+   ${r.med}
+</b> (${r.dose})
+
+    ${r.profile} • ${r.time}<br>
+    <small>${due ? '📅 Due today <span class="due-badge">DUE</span>' : '⏭ Not today'}</small>
+    <div style="margin-top:10px;display:flex;gap:10px">
+      ${
+        r.completed
+          ? `<small>✓ Completed</small>`
+          : due && !r.takenToday
+            ? `<button class="primary" onclick="handleTake(event, '${id}')">TAKEN</button>`
+            : r.takenToday
+              ? `<span class="checkmark"></span>`
+              : ''
+      }
+      <button class="ghost" onclick="handleDelete(event, '${id}')">DELETE</button>
+    </div>
+  `;
+
+  list.appendChild(c);
+});
+
+  streak.innerText=data.streak;
+}
+function handleTake(e, id){
+  e.stopPropagation();
+  const index = data.reminders.findIndex(m => m.id === id);
+  if(index === -1) return;
+  take(index);
 }
 
-        <button class="ghost" onclick="del(${i})">DELETE</button>
-      </div>`;
-    list.appendChild(c);
-  });
-  streak.innerText=data.streak;
+function handleDelete(e, id){
+  e.stopPropagation();
+  const index = data.reminders.findIndex(m => m.id === id);
+  if(index === -1) return;
+  del(index);
 }
 
 function showCalendar(){
@@ -492,6 +544,13 @@ function showCalendar(){
   list.style.display='none';
   calendar.style.display='block';
   renderCalendar();
+}
+
+function ensureToday(){
+  const today = new Date().toDateString();
+  if(data.lastOpenDate !== today){
+    resetForNewDay();
+  }
 }
 
 function showList(){
@@ -542,7 +601,15 @@ function renderWeek(){
   calendar.appendChild(grid);
 }
 
+
 function renderMedicinePage(){
+  if(
+    selectedMedicineIndex === null ||
+    !data.reminders[selectedMedicineIndex]
+  ){
+    closeMedicine();
+    return;
+  }
   const m = data.reminders[selectedMedicineIndex];
 
   document.getElementById('md-name').innerText = m.med;
@@ -557,6 +624,10 @@ function renderMedicinePage(){
       : m.days.map(d => dayNames[d]).join(', ');
 
  const takeBtn = document.getElementById('mdTakeBtn');
+if(!data.reminders[selectedMedicineIndex]){
+  closeMedicine();
+  return;
+}
 
 if(m.completed){
   document.getElementById('md-status').innerHTML = '✓ Medicine course completed';
@@ -622,12 +693,19 @@ function renderMonth(){
 const daySelector = document.getElementById('daySelector');
 
 function updateDayUI(){
+  const grid = document.querySelector('.day-grid');
+
   if(dailyChk.checked){
     daySelector.classList.add('disabled');
+    grid.classList.add('disabled');
+
+    dayChks.forEach(c => c.checked = false);
   } else {
     daySelector.classList.remove('disabled');
+    grid.classList.remove('disabled');
   }
 }
+
 
 // run once on load
 updateDayUI();
@@ -637,15 +715,21 @@ dailyChk.addEventListener('change', updateDayUI);
 
 function callEmergency(){location.href='tel:'+data.emergency}
 
-loadProfiles();render();
+loadProfiles();
+resetForNewDay();
+render();
 let selectedMedicineIndex = null;
 
-function openMedicine(i){
-  selectedMedicineIndex = i;
+function openMedicine(id){
+  selectedMedicineIndex = data.reminders.findIndex(m => m.id === id);
+  if(selectedMedicineIndex === -1) return;
+
   app.style.display = 'none';
   document.getElementById('medicinePage').style.display = 'block';
   renderMedicinePage();
 }
+
+
 
 function closeMedicine(){
   document.getElementById('medicinePage').style.display = 'none';
